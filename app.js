@@ -6,7 +6,8 @@ const ejs = require('ejs');
 const mongoose = require('mongoose');
 const mongo = require('mongo');
 const app = express();
-const md5 = require('md5');
+const bcrypt = require('bcrypt');
+const saltRounds = 10;
 
 app.use(bodyParser.urlencoded({extended: true}));
 app.set('view engine', 'ejs');
@@ -39,17 +40,19 @@ app.get("/register", function(req, res) {
 
 //post requests ofr different routes---------------------------------------------
 app.post("/register", function(req, res) {
-  var user = new User({
-    email: req.body.username,
-    password: md5(req.body.password)
-  });
-  user.save(function(err) {
-    if(err) {
-      console.log(err);
-    }
-    else {
-      res.render("secrets");
-    }
+  bcrypt.hash(req.body.password, saltRounds, function(err, hash) {
+    var user = new User({
+      email: req.body.username,
+      password: hash
+    });
+    user.save(function(err) {
+      if(err) {
+        console.log(err);
+      }
+      else {
+        res.render("secrets");
+      }
+    });
   });
 });
 
@@ -59,9 +62,14 @@ app.post("/login", function(req, res) {
       console.log(err);
     }
     else {
-      if(md5(req.body.password) === foundUser.password) {
-        res.render("secrets");
-      }
+      bcrypt.compare(req.body.password, foundUser.password, function(err,result) {
+        if(result === true) {
+            res.render("secrets");
+        }
+        else {
+          console.log("Incorrect password.");
+        }
+      })
     }
   });
 });
